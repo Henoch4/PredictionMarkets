@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Prediction Markets — Parimutuel odds on BOT Chain</title>
+<meta name="description" content="Open a binary market, stake either side, and let the oracle settle it. Winning side splits the entire pool pro rata.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+:root{
+  --coal:#14130f; --coal2:#1c1a14; --panel:#211f18; --ink:#f6f1e4; --mut:#a49b86;
+  --line:#38331f; --amber:#fbbf24; --amber-dim:rgba(251,191,36,.12); --green:#34d399; --red:#f87171;
+  --r:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--coal);color:var(--ink);font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+input,select{font:inherit;color:inherit}
+h1,h2,h3{margin:0;font-weight:700;letter-spacing:-.025em}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,monospace}
+.num{font-variant-numeric:tabular-nums}
+
+.topbar{border-bottom:1px solid var(--line);background:rgba(20,19,15,.94);backdrop-filter:blur(10px);position:sticky;top:0;z-index:30}
+.topbar .in{max-width:1180px;margin:0 auto;padding:13px clamp(14px,3vw,32px);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:'Archivo Black',sans-serif;font-size:15px;letter-spacing:-.03em}
+.brand i{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;background:var(--amber);color:#1a1503;font-style:normal;font-size:15px;font-weight:800}
+.tb{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.net{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:11px;font-family:ui-monospace,monospace}
+.net button{padding:6px 10px;color:var(--mut)}
+.net button.on{background:var(--amber-dim);color:var(--amber)}
+.net button:disabled{opacity:.35;cursor:not-allowed}
+.acct{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.live{width:6px;height:6px;border-radius:50%;background:var(--red)}
+.live.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+.cbtn{background:var(--amber);color:#1a1503;font-weight:700;font-size:12.5px;padding:8px 14px;border-radius:8px}
+.cbtn:hover{filter:brightness(1.08)}
+
+.layout{max-width:1180px;margin:0 auto;padding:26px clamp(14px,3vw,32px) 60px;display:grid;grid-template-columns:1fr 336px;gap:24px;align-items:start}
+.head{margin-bottom:20px}
+.head .kick{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--amber);font-weight:700}
+.head h1{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,4.4vw,44px);line-height:.98;letter-spacing:-.04em;margin-top:10px}
+.head p{color:var(--mut);font-size:13.5px;line-height:1.65;margin:12px 0 0;max-width:64ch}
+
+/* market row */
+.mrow{border:1px solid var(--line);border-radius:var(--r);background:var(--coal2);margin-bottom:11px;overflow:hidden;transition:.16s}
+.mrow:hover{border-color:#4a4227}
+.mtop{padding:16px 18px 13px;display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.mtop h3{font-size:16.5px;line-height:1.32;font-weight:600;max-width:62ch}
+.mtop .id{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--mut);white-space:nowrap}
+.st{font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border-radius:5px;font-weight:700;white-space:nowrap}
+.st.open{background:var(--amber-dim);color:var(--amber)}
+.st.done{background:rgba(52,211,153,.13);color:var(--green)}
+.st.dead{background:rgba(248,113,113,.13);color:var(--red)}
+
+/* split bar */
+.splitbar{display:flex;height:8px;background:var(--panel);position:relative}
+.splitbar i{display:block;height:100%}
+.splitbar .yes{background:linear-gradient(90deg,#34d399,#10b981)}
+.splitbar .no{background:linear-gradient(90deg,#f87171,#ef4444)}
+.pools{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line)}
+.pool{padding:10px 18px;border-right:1px solid var(--line)}
+.pool:last-child{border-right:0;text-align:right}
+.pool small{display:block;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--mut);margin-bottom:3px}
+.pool b{font-size:15px;font-weight:600}
+.pool .odds{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--mut);margin-left:7px}
+
+.mact{display:flex;gap:8px;padding:12px 18px;flex-wrap:wrap;align-items:center}
+.inp{display:flex;align-items:center;gap:6px;background:var(--coal);border:1px solid var(--line);border-radius:8px;padding:0 10px;flex:1;min-width:120px}
+.inp input{background:none;border:0;padding:9px 0;font-size:13px;width:100%;color:var(--ink);outline:none}
+.inp span{font-size:10.5px;color:var(--mut);letter-spacing:.06em}
+.ybtn{background:rgba(52,211,153,.16);color:var(--green);border:1px solid rgba(52,211,153,.32);font-weight:700;font-size:12.5px;padding:9px 16px;border-radius:8px}
+.ybtn:hover{background:rgba(52,211,153,.26)}
+.nbtn{background:rgba(248,113,113,.14);color:var(--red);border:1px solid rgba(248,113,113,.3);font-weight:700;font-size:12.5px;padding:9px 16px;border-radius:8px}
+.nbtn:hover{background:rgba(248,113,113,.24)}
+.gbtn{background:transparent;border:1px solid var(--line);color:var(--mut);font-size:12px;padding:9px 13px;border-radius:8px}
+.gbtn:hover{border-color:var(--amber);color:var(--amber)}
+.posline{padding:0 18px 12px;font-size:11.5px;color:var(--amber);font-family:ui-monospace,monospace}
+
+/* sidebar */
+aside{position:sticky;top:76px;display:grid;gap:14px}
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--coal2);padding:16px}
+.panel h3{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:13px}
+.kv{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.kv:last-child{border-bottom:0}
+.kv span{color:var(--mut)}
+.kv b{font-weight:600}
+label{display:grid;gap:6px;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:11px}
+input,textarea,select{background:var(--coal);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13px;width:100%;color:var(--ink)}
+input:focus,textarea:focus,select:focus{outline:1px solid var(--amber);border-color:var(--amber)}
+textarea{resize:vertical}
+.panel .cbtn{width:100%;padding:11px;margin-top:2px}
+.tip{font-size:11.5px;color:var(--mut);line-height:1.6;margin:11px 0 0}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:40px;text-align:center;color:var(--mut);font-size:13px}
+
+footer{border-top:1px solid var(--line);margin-top:44px;padding:20px 0 30px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut);align-items:center;grid-column:1/-1}
+footer b{color:var(--ink)}
+footer a{color:var(--amber);text-decoration:none;border-bottom:1px solid rgba(251,191,36,.3)}
+.fl{display:flex;align-items:center;gap:8px}
+.fl svg{width:16px;height:16px;flex:none}
+.fr{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+
+#toast{position:fixed;left:50%;bottom:22px;translate:-50% 220%;background:var(--amber);color:#1a1503;padding:11px 19px;border-radius:9px;font-size:12.5px;font-weight:700;transition:.28s cubic-bezier(.2,.9,.2,1);max-width:min(92vw,520px);z-index:60}
+#toast.on{translate:-50% 0}
+#toast.err{background:var(--red);color:#1a0404}
+
+@media(max-width:960px){
+  .layout{grid-template-columns:1fr}
+  aside{position:static}
+  footer{grid-column:1}
+  .pools{grid-template-columns:1fr}
+  .pool:last-child{text-align:left;border-top:1px solid var(--line)}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="in">
+    <div class="brand"><i>◭</i>PREDICTION</div>
+    <div class="tb">
+      <div class="net"><button id="n677" class="on">677</button><button id="n968" disabled title="Testnet pending">968</button></div>
+      <div class="acct"><span class="live" id="live"></span><span class="mono" id="addr">not connected</span></div>
+      <button class="cbtn" id="connect">Connect wallet</button>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <div>
+    <div class="head">
+      <div class="kick">Parimutuel · oracle settled</div>
+      <h1>Stake a side. Split the pool.</h1>
+      <p>Each market holds two pools. When the oracle writes the outcome, every winner claims their stake plus a pro-rata share of the losing side. No bookmaker, no spread, no house edge — the entire pool is distributed.</p>
+    </div>
+    <div id="list"></div>
+  </div>
+
+  <aside>
+    <div class="panel">
+      <h3>Protocol</h3>
+      <div class="kv"><span>Markets</span><b id="kMarkets">0</b></div>
+      <div class="kv"><span>Total volume</span><b id="kVol">0 BOT</b></div>
+      <div class="kv"><span>Positions</span><b id="kPos">0</b></div>
+      <div class="kv"><span>Chain</span><b>677</b></div>
+    </div>
+
+    <div class="panel">
+      <h3>Open a market</h3>
+      <label>Question<textarea id="qQ" rows="2" placeholder="Will BOT close above 1.00 USD?" maxlength="140"></textarea></label>
+      <label>Window (seconds)<input id="qDur" type="number" min="1" step="1" placeholder="3600"></label>
+      <label>Oracle address<input id="qOracle" placeholder="0x…"></label>
+      <button class="cbtn" id="createBtn">Create market</button>
+      <p class="tip">Only the oracle you name can settle the market, and only after the deadline. You can be your own oracle for a demo.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Settle</h3>
+      <label>Market<input id="rMid" type="number" min="0" step="1" placeholder="0"></label>
+      <label>Outcome<select id="rOut"><option value="1">YES</option><option value="2">NO</option></select></label>
+      <button class="cbtn" id="resolveBtn">Resolve as oracle</button>
+      <p class="tip">Resolution is final and cannot be reversed. Winners claim after this.</p>
+    </div>
+  </aside>
+
+  <footer>
+    <div class="fl">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 21 8v8l-9 5-9-5V8l9-5Z" stroke="#fbbf24" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 8v5M12 16.2v.2" stroke="#34d399" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <span><b>BOT Chain</b> · Prediction Markets</span>
+    </div>
+    <div class="fr">
+      <span>Chain ID 677</span>
+      <span class="mono">0x5BB15C0aCF487f37d3B6B93102095CA215652e37</span>
+      <a href="https://botchain.ai" target="_blank" rel="noopener">BOT Chain Website ↗</a>
+      <a href="https://scan.botchain.ai/" target="_blank" rel="noopener">BOTScan Explorer ↗</a>
+    </div>
+  </footer>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="importmap">{"imports":{"ethers":"https://esm.sh/ethers@6.13.2"}}</script>
+<script type="module">
+import { ethers } from 'ethers';
+
+const ABI = [
+  'function createMarket(string question, uint256 durationSeconds, address oracle) returns (uint256)',
+  'function buyYes(uint256 mid) payable',
+  'function buyNo(uint256 mid) payable',
+  'function resolve(uint256 mid, uint8 outcome)',
+  'function claimWinnings(uint256 mid)',
+  'function marketCount() view returns (uint256)',
+  'function positionCount() view returns (uint256)',
+  'function marketInfo(uint256 mid) view returns (address creator, string question, uint256 deadline, bool resolved, uint8 outcome, uint256 yesPool, uint256 noPool, uint256 positionCount)',
+  'function markets(uint256) view returns (address creator, address oracle, string question, uint256 deadline, uint256 yesPool, uint256 noPool, uint8 outcome, bool resolved, uint256 positions)',
+  'function marketPositions(uint256, uint256) view returns (uint256)',
+  'function positions(uint256) view returns (address user, uint256 marketId, bool isYes, uint256 amount, bool claimed)',
+  'function totalVolume() view returns (uint256)'
+];
+
+const NET = { 677: { rpc: 'https://rpc.botchain.ai', hex: '0x2a5', label: 'BOT Chain Mainnet' }, 968: { rpc: 'https://rpc.bohr.life', hex: '0x3c8', label: 'BOT Chain Testnet' } };
+const CA = { 677: '0x5BB15C0aCF487f37d3B6B93102095CA215652e37', 968: '' };
+
+const $ = (s) => document.querySelector(s);
+const bot = (v, d = 4) => Number(ethers.formatEther(v)).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+const short = (a) => (!a ? '—' : a.slice(0, 6) + '…' + a.slice(-4));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let chainId = 677, acct = null, signer = null, MK = [], MY = {}, busy = false;
+const ro = { 677: new ethers.JsonRpcProvider(NET[677].rpc) };
+let _t;
+function toast(m, bad) { const t = $('#toast'); t.textContent = m; t.classList.toggle('err', !!bad); t.classList.add('on'); clearTimeout(_t); _t = setTimeout(() => t.classList.remove('on'), 5200); }
+
+function reader() { return CA[chainId] ? new ethers.Contract(CA[chainId], ABI, new ethers.JsonRpcProvider(NET[chainId].rpc)) : null; }
+const STOP = Symbol('stop');
+async function collect(fn, chunk = 8, cap = 400) {
+  const out = [];
+  for (let base = 0; base < cap; base += chunk) {
+    const batch = await Promise.all(Array.from({ length: chunk }, (_, k) =>
+      Promise.resolve().then(() => fn(base + k)).catch(() => STOP)));
+    for (const r of batch) { if (r === STOP) return out; out.push(r); }
+  }
+  return out;
+}
+
+async function byCount(count, fn, chunk = 10) {
+  const out = [];
+  for (let base = 0; base < count; base += chunk) {
+    const end = Math.min(count, base + chunk);
+    const part = await Promise.all(Array.from({ length: end - base }, (_, k) => fn(base + k)));
+    out.push(...part);
+  }
+  return out;
+}
+
+function injected() { return window.ethereum || window.okxwallet || null; }
+
+async function ensureChain() {
+  const eth = injected(); if (!eth) return;
+  const n = NET[chainId];
+  try { await eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: n.hex }] }); }
+  catch (e) {
+    if (e && (e.code === 4902 || e.code === -32603 || /unrecognized|not added|unknown/i.test(e.message || ''))) {
+      await eth.request({ method: 'wallet_addEthereumChain', params: [{ chainId: n.hex, chainName: n.label, nativeCurrency: { name: 'BOT', symbol: 'BOT', decimals: 18 }, rpcUrls: [n.rpc], blockExplorerUrls: ['https://scan.botchain.ai'] }] });
+    }
+  }
+}
+
+async function connect() {
+  const eth = injected();
+  if (!eth) { toast('No browser wallet found. Install MetaMask or OKX Wallet, then reload.', true); return; }
+  try {
+    await eth.request({ method: 'eth_requestAccounts' });
+    await ensureChain();
+    signer = await new ethers.BrowserProvider(eth).getSigner();
+    acct = await signer.getAddress();
+    $('#addr').textContent = short(acct);
+    $('#live').classList.add('on');
+    $('#connect').textContent = 'Disconnect';
+    if (eth.on) eth.on('accountsChanged', () => location.reload());
+    await load();
+    toast('Connected');
+  } catch (e) { toast('Connect failed: ' + ((e && (e.shortMessage || e.message)) || e), true); }
+}
+$('#connect').onclick = () => (acct ? location.reload() : connect());
+$('#n677').onclick = () => { chainId = 677; pn(); load(); };
+$('#n968').onclick = () => { if (!CA[968]) { toast('Testnet deployment pending.', true); return; } chainId = 968; pn(); load(); };
+function pn() { $('#n677').classList.toggle('on', chainId === 677); $('#n968').classList.toggle('on', chainId === 968); }
+
+async function load() {
+  const c = reader(); if (!c) return;
+  try {
+    const n = Number(await c.marketCount());
+    MK = await byCount(n, async (i) => {
+      const m = await c.markets(i);
+      return { id: i, creator: m.creator, oracle: m.oracle, q: m.question, deadline: Number(m.deadline), yes: m.yesPool, no: m.noPool, outcome: Number(m.outcome), resolved: m.resolved, positions: Number(m.positions) };
+    });
+  } catch (e) { MK = []; }
+
+  MY = {};
+  if (acct) {
+    try {
+      const total = Number(await c.positionCount());
+      const all = await byCount(total, async (i) => {
+        const p = await c.positions(i);
+        return { pid: i, user: p.user, mkt: Number(p.marketId), yes: p.isYes, amount: p.amount, claimed: p.claimed };
+      }, 12);
+      for (const p of all) {
+        if (p.user.toLowerCase() !== acct.toLowerCase()) continue;
+        (MY[p.mkt] = MY[p.mkt] || []).push(p);
+      }
+    } catch (e) {}
+  }
+  render();
+}
+
+function render() {
+  $('#kMarkets').textContent = MK.length;
+  $('#kPos').textContent = MK.reduce((s, m) => s + m.positions, 0);
+  let vol = 0n;
+  for (const m of MK) vol += m.yes + m.no;
+  $('#kVol').textContent = bot(vol, 3) + ' BOT';
+
+  const host = $('#list');
+  if (!MK.length) { host.innerHTML = '<div class="empty">No markets yet. Open the first one from the panel on the right.</div>'; return; }
+
+  host.innerHTML = MK.slice().reverse().map((m) => {
+    const total = m.yes + m.no;
+    const yp = total === 0n ? 50 : Number((m.yes * 10000n) / total) / 100;
+    const np = 100 - yp;
+    const now = Date.now() / 1000;
+    const closed = now >= m.deadline;
+    const st = m.resolved ? ['done', 'YES won'] : closed ? ['dead', 'Awaiting oracle'] : ['open', 'Open'];
+    if (m.resolved && m.outcome === 2) st[1] = 'NO won';
+    const canResolve = acct && m.oracle.toLowerCase() === acct.toLowerCase() && !m.resolved && closed;
+    const mine = MY[m.id] || [];
+    const claimable = mine.filter((p) => !p.claimed && ((m.outcome === 1 && p.yes) || (m.outcome === 2 && !p.yes)));
+    const oddsYes = total === 0n ? '—' : (Number(total) / Number(m.yes)).toFixed(2) + 'x';
+    const oddsNo = total === 0n ? '—' : (Number(total) / Number(m.no)).toFixed(2) + 'x';
+
+    return '<article class="mrow">'
+      + '<div class="mtop"><h3>' + esc(m.q) + '</h3><div style="display:flex;gap:8px;align-items:center"><span class="id">#' + m.id + '</span><span class="st ' + st[0] + '">' + st[1] + '</span></div></div>'
+      + '<div class="splitbar"><i class="yes" style="width:' + yp + '%"></i><i class="no" style="width:' + np + '%"></i></div>'
+      + '<div class="pools">'
+      + '<div class="pool"><small>YES pool · ' + yp.toFixed(1) + '%</small><b class="num">' + bot(m.yes) + ' BOT</b><span class="odds">' + oddsYes + '</span></div>'
+      + '<div class="pool"><small>NO pool · ' + np.toFixed(1) + '%</small><b class="num">' + bot(m.no) + ' BOT</b><span class="odds">' + oddsNo + '</span></div>'
+      + '</div>'
+      + (mine.length ? '<div class="posline">your stake: ' + mine.map((p) => (p.yes ? 'YES ' : 'NO ') + bot(p.amount) + (p.claimed ? ' ✓' : '')).join(' · ') + '</div>' : '')
+      + '<div class="mact">'
+      + (!m.resolved && !closed ? '<div class="inp"><input type="number" step="0.000001" min="0.000001" placeholder="stake" data-amt="' + m.id + '"><span>BOT</span></div><button class="ybtn" data-yes="' + m.id + '">Buy YES</button><button class="nbtn" data-no="' + m.id + '">Buy NO</button>' : '')
+      + (m.resolved && claimable.length ? '<button class="gbtn" data-claim="' + m.id + '">Claim ' + claimable.length + ' winning position' + (claimable.length === 1 ? '' : 's') + '</button>' : '')
+      + (canResolve ? '<button class="gbtn" data-open="' + m.id + '">Resolve</button>' : '')
+      + '<span style="margin-left:auto;font-size:11px;color:var(--mut)">' + (closed ? 'deadline passed' : 'ends ' + new Date(m.deadline * 1000).toLocaleString()) + '</span>'
+      + '</div></article>';
+  }).join('');
+}
+
+async function withSigner(fn) {
+  if (!signer) { await connect(); if (!signer) return; }
+  if (busy) { toast('A transaction is already in flight.'); return; }
+  busy = true;
+  try { await fn(); } finally { busy = false; }
+}
+
+async function send(method, args, value) {
+  const c = new ethers.Contract(CA[chainId], ABI, signer);
+  const tx = await c[method](...args, value !== undefined ? { value } : {});
+  toast('Sent ' + tx.hash.slice(0, 12) + '… waiting');
+  const rc = await tx.wait();
+  if (rc.status !== 1) throw new Error('reverted');
+  toast('Confirmed in block ' + rc.blockNumber);
+  await load();
+}
+const fail = (w, e) => toast(w + ': ' + ((e && (e.shortMessage || e.message)) || e), true);
+
+$('#list').addEventListener('click', async (e) => {
+  const y = e.target.closest('[data-yes]');
+  const n = e.target.closest('[data-no]');
+  const cl = e.target.closest('[data-claim]');
+  const op = e.target.closest('[data-open]');
+  if (y || n) {
+    const id = Number((y || n).dataset.yes !== undefined ? y.dataset.yes : n.dataset.no);
+    const inp = document.querySelector('[data-amt="' + id + '"]');
+    const v = Number(inp && inp.value);
+    if (!v || v <= 0) { toast('Enter a stake first.', true); return; }
+    await withSigner(async () => { try { await send(y ? 'buyYes' : 'buyNo', [id], ethers.parseEther(String(v))); } catch (x) { fail('Stake failed', x); } });
+  }
+  if (cl) {
+    const id = Number(cl.dataset.claim);
+    await withSigner(async () => { try { await send('claimWinnings', [id]); } catch (x) { fail('Claim failed', x); } });
+  }
+  if (op) { $('#rMid').value = op.dataset.open; $('#rOut').focus(); }
+});
+
+$('#createBtn').onclick = () => {
+  const q = $('#qQ').value.trim();
+  const dur = Number($('#qDur').value);
+  const oracle = $('#qOracle').value.trim();
+  if (!q) { toast('Write the market question.', true); return; }
+  if (!Number.isInteger(dur) || dur <= 0) { toast('Window must be whole seconds.', true); return; }
+  if (!ethers.isAddress(oracle)) { toast('Oracle address is invalid.', true); return; }
+  withSigner(async () => {
+    try { await send('createMarket', [q, dur, oracle]); $('#qQ').value = ''; } catch (x) { fail('Create failed', x); }
+  });
+};
+
+$('#resolveBtn').onclick = () => {
+  const mid = Number($('#rMid').value);
+  const out = Number($('#rOut').value);
+  if (!Number.isInteger(mid) || mid < 0) { toast('Market id must be a whole number.', true); return; }
+  withSigner(async () => { try { await send('resolve', [mid, out]); } catch (x) { fail('Resolve failed', x); } });
+};
+
+load();
+setInterval(load, 45000);
+</script>
+</body>
+</html>
