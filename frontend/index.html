@@ -99,6 +99,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 <footer><span>Verdict — Binary Yes/No prediction markets on BOT Chain</span><span>&#8226;Chain ID <b>677</b> &#8226;Contract <span class="mono">0x0000000000000000000000000000000000000677</span></span><span>&#8226; <a href="https://botchain.ai" target="_blank" rel="noopener">BOT Chain Website</a> &#8226; <a href="https://scan.botchain.ai/" target="_blank" rel="noopener">BOTScan Explorer</a></span></footer>
 <div id="toast" role="status"></div>
 <script>
+const PROJECT_ID = 'ee6081d44f535b82b71aa2003badb2b7'; // AppKit project ID — wired for BOT Chain 677
+
 const ABI=['function createMarket(string question,uint256 closeTime) returns (uint256)','function buyYes(uint256 id) payable','function buyNo(uint256 id) payable','function resolve(uint256 id,bool yes)','function claimWinnings(uint256 id)'];
 const CA ={677: '0x0000000000000000000000000000000000000677', 968: ''}; // TODO:set deployed contract addresses (placeholder on 677, empty on testnet)
 const NETS ={677:{label:'Mainnet 677',ca:'0x0000000000000000000000000000000000000000',hex: '0x2a5', name: 'BOT Chain Mainnet', rpc: 'https://rpc.botchain.ai', ex: 'https://scan.botchain.ai'}, 968:{label:'Testnet 968',ca:'0x0000000000000000000000000000000000000000',hex: '0x3c8', name: 'BOT Chain Testnet', rpc: 'https://rpc.bohr.life', ex: ''}};
