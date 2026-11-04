@@ -1,13 +1,13 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Verdict — Prediction Markets on BOT Chain</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;600;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@reown/appkit@1.8.21/dist/appkit.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@reown/appkit-adapter-ethers@1.8.21/dist/appkit-adapter-ethers.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+
+
+
+
 <style>
 :root{--motion-fast:200ms;--motion-base:600ms;--motion-slow:1100ms;--cb:#1530ff;--cbd:#0a1aa8;--yes:#b6ffd8;--no:#ff5a4d;--w:#f4f6ff;--k:#050a33}
 *{box-sizing:border-box;margin:0}
@@ -68,231 +68,14 @@ footer a{color:var(--yes)}.mono{word-break:break-all}
 @media(max-width:700px){.hd,.mk,.new{grid-template-columns:1fr}.hd small{writing-mode:horizontal-tb;transform:none}.mk .no{font-size:24px}.side{font-size:34vw}}
 
 @media(prefers-reduced-motion:reduce){.rv{transition:none!important;opacity:1;transform:none!important}*{animation:none!important}}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc,currentColor);outline-offset:2px}</style></head><body>
-<div class="top">
-  <b class="lg">VERDICT</b>
-  
-  <span id="badge"></span>
-  <select id="net" aria-label="Network"><option value="677">Mainnet 677</option><option value="968">Testnet 968</option></select>
-  <button id="connect" onclick="appkitConnect()" >Connect wallet</button>
-</div>
-
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc,currentColor);outline-offset:2px}</style><link href="./product.css" rel="stylesheet"><script defer src="./vendor/ethers.umd.min.js"></script><script defer src="./product.js"></script></head><body id="top" class="suite-product"><div class="suite-nav" role="navigation" aria-label="Main navigation"><a class="suite-brand" href="#top">Verdict</a><span id="suite-network" role="status">Checking mainnet…</span><button id="suite-wallet" type="button" disabled>Connect wallet</button><button id="suite-disconnect" type="button" hidden>Disconnect</button><a href="#suite-workspace">Open app</a></div>
 <div class="hero" id="hero">
   <div class="side y">YES</div><div class="side n">NO</div><div class="rule"></div>
   <div class="hint"><h1>Every future has two answers. Put BOT on yours.</h1>
-    <span>Binary prediction markets. Pools set the odds. <b id="mode"></b> mode.</span><br><span class="l">Built on BOT Chain Mainnet</span></div>
-</div>
-<div class="tick"><div id="tk"></div></div>
-
-<div class="wrap">
-  <div class="hd"><small>01 / OPEN BOOK</small><h2 class="rv">Take a side.</h2></div>
-  <div id="mks"></div>
-
-  <div class="new rv">
-    <small style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;opacity:.7">02 / CREATE</small>
-    <form id="cf">
-      <input id="cq" placeholder="Will ____ happen by ____?" maxlength="120" required>
-      <div class="row"><label>CLOSES IN (DAYS)</label><input id="cd" type="number" min="1" value="7"><button class="b c" type="submit">createMarket</button></div>
-    </form>
-  </div>
-</div>
-<footer><span>Verdict — Binary Yes/No prediction markets on BOT Chain</span><span>&#8226;Chain ID <b>677</b> &#8226;Contract <span class="mono">0x0000000000000000000000000000000000000677</span></span><span>&#8226; <a href="https://botchain.ai" target="_blank" rel="noopener">BOT Chain Website</a> &#8226; <a href="https://scan.botchain.ai/" target="_blank" rel="noopener">BOTScan Explorer</a></span></footer>
-<div id="toast" role="status"></div>
-<script>
-const PROJECT_ID = 'ee6081d44f535b82b71aa2003badb2b7'; // AppKit project ID — wired for BOT Chain 677
-
-const ABI=['function createMarket(string question,uint256 closeTime) returns (uint256)','function buyYes(uint256 id) payable','function buyNo(uint256 id) payable','function resolve(uint256 id,bool yes)','function claimWinnings(uint256 id)'];
-const CA ={677: '0x0000000000000000000000000000000000000677', 968: ''}; // TODO:set deployed contract addresses (placeholder on 677, empty on testnet)
-const NETS ={677:{label:'Mainnet 677',ca:'0x0000000000000000000000000000000000000000',hex: '0x2a5', name: 'BOT Chain Mainnet', rpc: 'https://rpc.botchain.ai', ex: 'https://scan.botchain.ai'}, 968:{label:'Testnet 968',ca:'0x0000000000000000000000000000000000000000',hex: '0x3c8', name: 'BOT Chain Testnet', rpc: 'https://rpc.bohr.life', ex: ''}};
-const S ={net:677, acct:null, signer:null};
-const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const short = a => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
-const errMsg = e => (e && (explainError(e) || explainError(e) || explainError(e)) || 'Something went wrong').slice(0, 140);
-function toast(m, k){
- const t = $('#toast');t.textContent = m;t.dataset.k = k || '';t.classList.add('on');
- clearTimeout(toast.t);toast.t = setTimeout(() => t.classList.remove('on'), 4600);
-}
-const live = () => !!(S.signer && CA[S.net] && !/^0x0{30,}/.test(CA[S.net]));
-async function addSwitch(id){
- const n = NETS[id];
- try{await window.ethereum.request({method: 'wallet_switchEthereumChain', params: [{chainId:n.hex}]})}
- catch (e){
- if (e.code === 4902 || e.code === -32603 || /unrecogni|add/i.test(explainError(e) || '')){
- const p ={chainId:n.hex, chainName:n.name, nativeCurrency:{name: 'BOT', symbol: 'BOT', decimals:18}, rpcUrls: [n.rpc]};
- if (n.ex) p.blockExplorerUrls = [n.ex];
- await window.ethereum.request({method: 'wallet_addEthereumChain', params: [p]});
-}else throw e;
-}
-}
-async function refreshSigner(){
- const p = new ethers.BrowserProvider(window.ethereum);
- S.signer = await p.getSigner();S.acct = await S.signer.getAddress();
-}
-function paintWallet(){
- const b = $('#connect');if (b) b.textContent = S.acct ? short(S.acct) : 'Connect wallet';
- const bd = $('#badge');if (bd) bd.textContent = 'Chain ID ' + S.net;
- const mode = $('#mode');if (mode) mode.textContent = live() ? 'LIVE' : 'DEMO';
-}
-async function send(fn, args, value, demo){
- if (!live()){demo && demo();toast('Demo mode · ' + fn + ' simulated. Connect a wallet and set CA for live txs.', 'demo');return}
- try{
- const c = new ethers.Contract(CA[S.net], ABI, S.signer);
- toast('Confirm ' + fn + ' in your wallet…');
- const o = value ?{value:ethers.parseEther(String(value))} :{};
- const tx = await c[fn](...args, o);
- toast('Submitted ' + tx.hash.slice(0, 12) + '…');await tx.wait();
- toast(fn + ' confirmed', 'ok');demo && demo();
-}catch (e){toast(errMsg(e), 'err')}
-}
-document.addEventListener('DOMContentLoaded', () =>{
-  $('#connect').onclick = connect;
- const sel = $('#net');
- sel.onchange = async () =>{
- S.net = +sel.value;paintWallet();
- if (S.acct){try{await addSwitch(S.net);await refreshSigner();toast('Switched to ' + NETS[S.net].name, 'ok')}catch (e){toast(errMsg(e), 'err')}}
- else toast('Network: ' + NETS[S.net].name + ' (' + S.net + ')');
-};
- if (window.ethereum && window.ethereum.on){
- window.ethereum.on('chainChanged', async () =>{try{S.acct && await refreshSigner()}catch (e){}paintWallet()});
- window.ethereum.on('accountsChanged', a =>{if (!a.length){S.acct = S.signer = null}else refreshSigner();paintWallet()});
-}
- const io = new IntersectionObserver(es => es.forEach(e =>{if (e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
-  $$('.rv').forEach(el => io.observe(el));
- paintWallet();
- if (typeof boot === 'function') boot();
-});
-
-const mk=[
-{q:'Will BOT Chain pass 1M daily transactions before year end?',y:420,n:310,days:41,res:null,my:{y:0,n:0}},
-{q:'Will a spot ETH ETF stake on-chain by Q1?',y:88,n:260,days:12,res:null,my:{y:0,n:0}},
-{q:'Will the next Mars-window launch slip past 2028?',y:150,n:150,days:300,res:null,my:{y:0,n:0}},
-{q:'Did the testnet 968 faucet exceed 10k claims in week one?',y:640,n:120,days:0,res:true,my:{y:2,n:0}}];
-const pct=m=>Math.round(m.y/(m.y+m.n)*100);
-function draw(){
- const box=$('#mks');box.innerHTML='';
- mk.forEach((m,i)=>{const p=pct(m),d=document.createElement('div');d.className='mk';
- d.innerHTML=`<div class="no">${String(i+1).padStart(2,'0')}</div><div>
-  <div class="q">${m.q.replace(/</g,'&lt;')}${m.res===null?'':`<span class="stamp ${m.res?'y':'n'}">${m.res?'YES':'NO'}</span>`}</div>
-  <div class="tug"><div class="y" style="width:${p}%">${p>8?p+'%':''}</div><div class="n" style="width:${100-p}%">${100-p>8?(100-p)+'%':''}</div></div>
-  <div class="meta"><span>YES pool ${m.y.toFixed(2)}BOT</span><span>NO pool ${m.n.toFixed(2)}BOT</span><span>${m.res!==null?'RESOLVED':m.days>0?'closes in '+m.days+'d':'CLOSED — awaiting resolve'}</span>${m.my.y||m.my.n?`<span class="mine">you: ${m.my.y}Y / ${m.my.n}N</span>`:''}</div>
-  <div class="acts">${m.res===null?`<input type="number" step="any" min="0" value="1" aria-label="amount BOT"><button class="b y" data-a="buyYes">Buy YES</button><button class="b n" data-a="buyNo">Buy NO</button><button class="b s" data-a="rY">resolve → YES</button><button class="b s" data-a="rN">resolve → NO</button>`:`<button class="b c" data-a="claim">claimWinnings</button>`}</div></div>`;
- d.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>act(i,b.dataset.a,d));box.appendChild(d)});
- $('#tk').innerHTML=Array(2).fill(mk.map(m=>`<span>${m.q.slice(0,34)}… <span class="${pct(m)>=50?'g':'r'}">${pct(m)}%</span></span>`).join(' &nbsp;•&nbsp; ')+' &nbsp;•&nbsp;OFFICIALLY LAUNCHED ON BOT CHAIN MAINNET &nbsp;•&nbsp; ').join('');
-}
-function act(i,a,d){const m=mk[i];
- if(a==='buyYes'||a==='buyNo'){const v=parseFloat($('input',d).value);if(!(v>0))return toast('Enter an amount','err');const yes=a==='buyYes';
- send(a,[i],v,()=>{yes?(m.y+=v,m.my.y+=v):(m.n+=v,m.my.n+=v);draw()})}
- else if(a==='rY'||a==='rN'){const yes=a==='rY';send('resolve',[i,yes],0,()=>{m.res=yes;draw()})}
- else send('claimWinnings',[i],0,()=>{const w=m.res?m.my.y:m.my.n;const tot=m.y+m.n,side=m.res?m.y:m.n;toast(w?'Claimed '+(w/side*tot).toFixed(2)+' BOT (demo)':'No winning position (demo)','ok')});
-}
-function boot(){
- draw();
- const h=$('#hero'),mv=x=>{const r=h.getBoundingClientRect();h.style.setProperty('--x',Math.max(5,Math.min(95,(x-r.left)/r.width*100))+'%')};
- h.addEventListener('pointermove',e=>mv(e.clientX));h.addEventListener('touchmove',e=>mv(e.touches[0].clientX),{passive:true});
- let t=0;setInterval(()=>{if(matchMedia('(hover:none)').matches){t+=.04;h.style.setProperty('--x',50+Math.sin(t)*30+'%')}},50);
- $('#cf').onsubmit=e=>{e.preventDefault();const q=$('#cq').value.trim(),days=+$('#cd').value||7;
- send('createMarket',[q,Math.floor(Date.now()/1000)+days*86400],0,()=>{mk.unshift({q,y:1,n:1,days,res:null,my:{y:0,n:0}});draw();$('#cf').reset()})};
-}
-
-// Add busy state on button clicks (Phase B)
-document.addEventListener('click', function(e){
- const btn = e.target.closest('button');
- if (btn && !btn.classList.contains('busy') && !btn.disabled){
- btn.disabled = true;
- btn.classList.add('busy');
- const origText = btn.textContent;
- btn.textContent = 'Confirming..';
- setTimeout(() =>{
- btn.disabled = false;
- btn.classList.remove('busy');
- btn.textContent = origText;
-}, 5000);
-}
-}, true);
-
-// ===== Phase B:AppKit + GSAP runtime =====
-let appkit=null, currentNet=677, contract=null, signer=null;
-
-async function initAppKit(){
- try{
- const{createAppKit}=window;
- const{EthersAdapter}=window;
- const adapter=new EthersAdapter();
- appkit=createAppKit({
- adapters:[adapter],
- networks:[
-{id:677,name:'BOT Mainnet',nativeCurrency:{name:'BOT',symbol:'BOT',decimals:18},rpcUrls:{default:{http:['https://rpc.botchain.ai']}}},
-{id:968,name:'BOT Testnet',nativeCurrency:{name:'BOT',symbol:'BOT',decimals:18},rpcUrls:{default:{http:['https://rpc.bohr.life']}}}
-      ],
- projectId:PROJECT_ID,
- features:{analytics:false}
-});
- appkit.subscribeAccount((a)=>{const addr=a.address||null;const b=$('#connect')||$('#connectBtn')||$('#walletBtn')||$('#wbtn');if(b)b.textContent=addr?addr.slice(0,6)+'…'+addr.slice(-4):'Connect wallet';const m=$('#mode')||$('#modeTag');if(m)m.textContent=addr?'LIVE':'DEMO'});
- appkit.subscribeNetwork((n)=>{if(n&&n.chainId){currentNet=Number(n.chainId);const b=$('#badge')||$('#cid')||$('#chainBadge')||$('#netpill');if(b)b.textContent='Chain ID '+currentNet}});
-}catch(e){console.warn('AppKit init failed',e)}
-}
-async function appkitConnect(){
- if(!appkit)await initAppKit();
- if(appkit){try{await appkit.open()}catch(e){toast('AppKit connect failed: '+(explainError(e)||e.code),'err')}return}
-  // Fallback:raw ethers connect
- if(!window.ethereum){toast('No wallet found - install a Web3 wallet',true);return}
- try{const accts=await window.ethereum.request({method:'eth_requestAccounts'});setWallet(accts.length>0,accts[0]);provider=new ethers.BrowserProvider(window.ethereum);signer=await provider.getSigner();await ensureChain();initContract()}catch(e){toast('Wallet connect: '+ (explainError(e)||e.code),true)}}
-function setWallet(connected,addr){const b=$('#connect')||$('#connectBtn')||$('#walletBtn')||$('#wbtn');if(b)b.textContent=addr?addr.slice(0,6)+'…'+addr.slice(-4):'Connect wallet';b.classList.toggle('connected',!!addr)}
-function initContract(){if(!currentNet){return}try{const provider=new ethers.JsonRpcProvider(NETS[currentNet].rpc);const abi=[];contract=new ethers.Contract(NETS[currentNet].ca,abi,signer||provider)}catch(e){console.warn('contract init',e);contract=null}}
-async function ensureChain(){if(!window.ethereum)return;try{const cid=await window.ethereum.request({method:'eth_chainId'});currentNet=Number(cid);if(!NETS[currentNet]){try{await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x2a5'}]});currentNet=677}catch(sw){if(sw.code===4902||/unrecognized|not added|add/i.test(sw.message||sw.code||'')){try{await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0x2a5',chainName:'BOT Chain Mainnet',nativeCurrency:{name:'BOT',symbol:'BOT',decimals:18},rpcUrls:['https://rpc.botchain.ai'],blockExplorerUrls:['https://scan.botchain.ai']}]});currentNet=677}catch(ae){toast('Add chain failed: '+(ae.message||ae.code),'err')}}else{toast('Switch rejected: '+(sw.message||sw.code),'err')}}}}catch(e4){currentNet=currentNet||677}}
-
-function explainError(e){if(!e)return 'Unknown error';const m=explainError(e)||explainError(e)||(e.data&&e.data.message)||'';if(e.code===4001)return 'Transaction rejected in wallet. Nothing spent on-chain.';let msg=String(m||explainError(e)||String(e));msg=msg.replace(/^execution reverted:/i,'').trim();if(msg.length>170)msg=msg.slice(0,167)+'..';return msg}
-// ===== Phase B:AppKit + GSAP runtime =====
-
-
-
-async function initAppKit(){
- try{
- const{createAppKit}=window;
- const{EthersAdapter}=window;
- const adapter=new EthersAdapter();
- appkit=createAppKit({
- adapters:[adapter],
- networks:[
-{id:677,name:'BOT Mainnet',nativeCurrency:{name:'BOT',symbol:'BOT',decimals:18},rpcUrls:{default:{http:['https://rpc.botchain.ai']}}},
-{id:968,name:'BOT Testnet',nativeCurrency:{name:'BOT',symbol:'BOT',decimals:18},rpcUrls:{default:{http:['https://rpc.bohr.life']}}}
-      ],
- projectId:PROJECT_ID,
- features:{analytics:false}
-});
- appkit.subscribeAccount((a)=>{const addr=a.address||null;const b=$('#connect')||$('#connectBtn')||$('#walletBtn')||$('#wbtn');if(b)b.textContent=addr?addr.slice(0,6)+'…'+addr.slice(-4):'Connect wallet';const m=$('#mode')||$('#modeTag');if(m)m.textContent=addr?'LIVE':'DEMO'});
- appkit.subscribeNetwork((n)=>{if(n&&n.chainId){currentNet=Number(n.chainId);const b=$('#badge')||$('#cid')||$('#chainBadge')||$('#netpill');if(b)b.textContent='Chain ID '+currentNet}});
-}catch(e){console.warn('AppKit init failed',e)}
-}
-async function appkitConnect(){
- if(!appkit)await initAppKit();
- if(appkit){try{await appkit.open()}catch(e){toast('AppKit connect failed: '+(e.message||e.code),'err');return}}
- if(!window.ethereum){toast('No wallet found - install a Web3 wallet',true);return}
- try{const accts=await window.ethereum.request({method:'eth_requestAccounts'});setWallet(accts.length>0,accts[0]);provider=new ethers.BrowserProvider(window.ethereum);signer=await provider.getSigner();await ensureChain();initContract()}catch(e){toast('Wallet connect: '+(e.message||e.code),true)}
-}
-function setWallet(connected,addr){const b=$('#connect')||$('#connectBtn')||$('#walletBtn')||$('#wbtn');if(b)b.textContent=addr?addr.slice(0,6)+'…'+addr.slice(-4):'Connect wallet';b.classList.toggle('connected',!!addr)}
-function initContract(){if(!currentNet){return}try{const provider=new ethers.JsonRpcProvider(NETS[currentNet].rpc);contract=new ethers.Contract(NETS[currentNet].ca,[],signer||provider)}catch(e){console.warn('contract init',e);contract=null}}
-async function ensureChain(){if(!window.ethereum)return;try{const cid=await window.ethereum.request({method:'eth_chainId'});currentNet=Number(cid);if(!NETS[currentNet]){try{await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x2a5'}]});currentNet=677}catch(sw){if(sw.code===4902||/unrecognized|not added|add/i.test(sw.message||sw.code||'')){try{await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:'0x2a5',chainName:'BOT Chain Mainnet',nativeCurrency:{name:'BOT',symbol:'BOT',decimals:18},rpcUrls:['https://rpc.botchain.ai'],blockExplorerUrls:['https://scan.botchain.ai']}]});currentNet=677}catch(ae){toast('Add chain failed: '+(ae.message||ae.code),'err')}}else{toast('Switch rejected: '+(sw.message||sw.code),'err')}}}}catch(e4){currentNet=currentNet||677}}
-
-function explainError(e){if(!e)return 'Unknown error';const m=e.shortMessage||e.reason||(e.data&&e.data.message)||'';if(e.code===4001)return 'Transaction rejected in wallet. Nothing spent on-chain.';let msg=String(m||e.message||String(e));msg=msg.replace(/^execution reverted:/i,'').trim();if(msg.length>170)msg=msg.slice(0,167)+'..';return msg}
-
-async function sendTx(btn,fnName,args,valueEth,label){if(!contract||!signer){toast('Connect wallet first',true);return}const resting=btn.textContent;btn.disabled=true;btn.classList.add('busy');btn.textContent='Confirm in wallet..';try{if(!currentNet)await ensureChain();const usable=contract.connect(signer);const tx=valueEth!=null?await usable[fnName](...args,{value:ethers.parseEther(String(valueEth))}):await usable[fnName](...args);const rc=await tx.wait();toast((label||fnName)+' confirmed on '+(currentNet?currentNet.label:'chain'));return tx}catch(e){toast(explainError(e),true);throw e}finally{btn.disabled=false;btn.classList.remove('busy');btn.textContent=resting}}
-
-function initGSAP(){
- if(typeof gsap==='undefined')return;
- const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
- if(reduced){document.querySelectorAll('.rv').forEach(el=>{el.style.opacity='1';el.style.transform='none'});return}
- gsap.registerPlugin(ScrollTrigger);
- gsap.from('.rv',{opacity:0,y:26,duration:0.7,ease:'expo.out',stagger:0.07});
- gsap.utils.toArray('.rv').forEach(el=>{gsap.from(el,{opacity:0,y:34,duration:0.8,ease:'expo.out',scrollTrigger:{trigger:el,start:'top 85%'},clearProps:'all'})});
-}
-
-function addBusyStates(){
- document.addEventListener('click',function(e){const btn=e.target.closest('button');if(btn&&!btn.classList.contains('busy')&&!btn.disabled){btn.disabled=true;btn.classList.add('busy');const origText=btn.textContent;btn.textContent='Confirming..';setTimeout(()=>{btn.disabled=false;btn.classList.remove('busy');btn.textContent=origText},5000)}},true);
-}
-
-function addAria(){
- document.querySelectorAll('button').forEach(b=>{if(!b.getAttribute('aria-label')&&!b.getAttribute('aria-labelledby')){b.setAttribute('aria-label',b.textContent.trim()||'button')}});
- document.querySelectorAll('input,select,textarea').forEach(el=>{if(!el.getAttribute('aria-label')&&!el.getAttribute('aria-labelledby')){const lab=el.previousElementSibling;if(lab&&lab.tagName==='LABEL'){el.setAttribute('aria-labelledby',lab.id||(lab.id='lab-'+Math.random().toString(36).slice(2)))}}});
-}
-</script></body></html>
+    <span>Binary prediction markets. Stakes and payouts are recorded on-chain.</span><br><span class="l">Contract deployed on BOT Chain</span></div>
+</div><main class="suite-workspace suite-layout-3" id="suite-workspace"><p id="suite-message" role="status" aria-live="polite">Checking BOT Chain mainnet…</p><h2 id="suite-heading">Verdict</h2><p id="suite-summary"></p><div id="suite-address"></div>
+<section id="suite-overview" aria-labelledby="suite-overview-heading"><h2 id="suite-overview-heading">On-chain overview</h2><div class="suite-grid" id="suite-stats"></div><button type="button" id="suite-refresh">Refresh mainnet data</button></section>
+<section id="suite-actions" aria-labelledby="suite-actions-heading"><h2 id="suite-actions-heading">Your next move</h2><p id="suite-actions-note"></p><div class="suite-grid" id="suite-action-grid"></div></section>
+<section id="suite-lookup" aria-labelledby="suite-lookup-heading"><h2 id="suite-lookup-heading">Find a record</h2><label class="suite-field" for="suite-query">What would you like to look up?<select id="suite-query"></select></label><form id="suite-query-form"></form><div id="suite-query-result" class="suite-result" aria-live="polite"></div><div id="suite-record-actions" class="suite-grid"></div></section>
+<section aria-labelledby="suite-history-heading"><h2 id="suite-history-heading">Your session activity</h2><div id="suite-history"></div></section></main>
+<dialog id="suite-review" class="suite-review" aria-labelledby="suite-review-title"><div id="suite-review-content"></div><div class="suite-review-actions"><button type="button" id="suite-confirm">Confirm in wallet</button><button type="button" id="suite-review-cancel">Cancel</button></div></dialog><footer class="suite-footer"><span>Verdict · BOT Chain mainnet 677</span><a rel="noopener noreferrer" target="_blank" href="https://botchain.ai">BOT Chain Website</a><a rel="noopener noreferrer" target="_blank" href="https://scan.botchain.ai/">BOTScan Explorer</a><a rel="noopener noreferrer" target="_blank" href="https://scan.botchain.ai/address/0x5BB15C0aCF487f37d3B6B93102095CA215652e37">Contract</a></footer></body></html>

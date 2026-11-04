@@ -38,6 +38,11 @@ contract PredictionMarkets is ReentrancyGuard {
     mapping(uint256 => uint256[]) public marketPositions;
 
     uint256 public totalVolume;
+    mapping(uint256=>mapping(address=>uint256[])) public userMarketPositions;
+    mapping(uint256=>uint256) public yesPositionCount;
+    mapping(uint256=>uint256) public noPositionCount;
+    mapping(uint256=>uint256) public remainingWinners;
+    mapping(uint256=>uint256) public settledAmount;
 
     event MarketCreated(uint256 indexed mid, address indexed creator, string question, uint256 deadline, address oracle);
     event PositionOpened(uint256 indexed mid, uint256 indexed pid, address indexed user, bool isYes, uint256 amount);
@@ -66,6 +71,8 @@ contract PredictionMarkets is ReentrancyGuard {
         positions.push(Position(msg.sender, mid, isYes, msg.value, false));
         uint256 pid = positions.length - 1;
         marketPositions[mid].push(pid);
+        userMarketPositions[mid][msg.sender].push(pid);
+        if(isYes)yesPositionCount[mid]++;else noPositionCount[mid]++;
         m.positions += 1;
         totalVolume += msg.value;
         emit PositionOpened(mid, pid, msg.sender, isYes, msg.value);
@@ -82,29 +89,44 @@ contract PredictionMarkets is ReentrancyGuard {
         require(outcome == 1 || outcome == 2, "Bad outcome");
         m.resolved = true;
         m.outcome = outcome;
+        remainingWinners[mid]=outcome==1?yesPositionCount[mid]:noPositionCount[mid];
         emit MarketResolved(mid, outcome, m.yesPool, m.noPool);
     }
 
     function claimWinnings(uint256 mid) external nonReentrant {
+        _claim(mid,0,100);
+    }
+    function claimRange(uint256 mid,uint256 offset,uint256 count) external nonReentrant {
+        require(count>0&&count<=100,"Maximum 100 positions");
+        _claim(mid,offset,count);
+    }
+    function _claim(uint256 mid,uint256 offset,uint256 count) private {
         Market storage m = markets[mid];
         require(m.resolved, "Not resolved");
         uint256 winningPool = m.outcome == 1 ? m.yesPool : m.noPool;
-        if (winningPool == 0) return;
         uint256 totalPaid = 0;
-        uint256[] memory pids = marketPositions[mid];
-        for (uint256 i = 0; i < pids.length; i++) {
+        uint256[] storage pids = userMarketPositions[mid][msg.sender];
+        require(offset<=pids.length,"Invalid offset");
+        uint256 end=offset+count;if(end>pids.length)end=pids.length;
+        for (uint256 i = offset; i < end; i++) {
             Position storage p = positions[pids[i]];
-            if (p.user != msg.sender || p.claimed) continue;
+            if (p.claimed) continue;
             bool won = (m.outcome == 1 && p.isYes) || (m.outcome == 2 && !p.isYes);
             p.claimed = true;
-            if (!won) continue;
-            uint256 lossPool = m.outcome == 1 ? m.noPool : m.yesPool;
-            uint256 payout = p.amount + (p.amount * lossPool / winningPool);
+            if (!won&&winningPool>0) continue;
+            uint256 payout;
+            if(winningPool==0)payout=p.amount;
+            else {
+                uint256 lossPool = m.outcome == 1 ? m.noPool : m.yesPool;
+                remainingWinners[mid]--;
+                payout=remainingWinners[mid]==0?m.yesPool+m.noPool-settledAmount[mid]:p.amount+(p.amount*lossPool/winningPool);
+            }
+            settledAmount[mid]+=payout;
             totalPaid += payout;
-            payable(msg.sender).transfer(payout);
             emit WinningsClaimed(mid, pids[i], msg.sender, payout);
         }
         require(totalPaid > 0, "Nothing to claim");
+        (bool ok,)=msg.sender.call{value:totalPaid}("");require(ok,"Payout failed");
     }
 
     function marketInfo(uint256 mid) external view returns (address creator, string memory question, uint256 deadline, bool resolved, uint8 outcome, uint256 yesPool, uint256 noPool, uint256 positionCount) {
