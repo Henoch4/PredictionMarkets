@@ -4,7 +4,7 @@ Create a question, stake BOT on yes or no, and claim after its named oracle reso
 
 ## Mainnet status
 
-Contract on BOT Chain mainnet (677): [0x5BB15C0aCF487f37d3B6B93102095CA215652e37](https://scan.botchain.ai/address/0x5BB15C0aCF487f37d3B6B93102095CA215652e37).
+Contract on BOT Chain mainnet (677): [0x214015bA1D242cfD260f2545E4D49b6F337794B5](https://scan.botchain.ai/address/0x214015bA1D242cfD260f2545E4D49b6F337794B5).
 
 Wallet actions require BOT Chain mainnet, deployed bytecode, and a connected compatible wallet. Every action is simulated before a transaction review; only a subsequent wallet confirmation can send it.
 
@@ -19,12 +19,13 @@ Wallet actions require BOT Chain mainnet, deployed bytecode, and a connected com
 
 ## Contract interface
 
-`frontend/product.json` uses the deployment-era ABI from the recorded deployment artifacts. The current Solidity source may contain newer fixes; it must not be assumed to match deployed bytecode.
+`frontend/product.json` uses the current-source ABI, matched against the deployed mainnet runtime bytecode. Explorer source publication is tracked separately.
 
 | Action | Contract signature |
 |---|---|
 | Back no | `buyNo(uint256)` |
 | Back yes | `buyYes(uint256)` |
+| Claim a page of positions | `claimRange(uint256,uint256,uint256)` |
 | Claim your winnings | `claimWinnings(uint256)` |
 | Create a market | `createMarket(string,uint256,address)` |
 | Resolve a market | `resolve(uint256,uint8)` |
@@ -51,3 +52,7 @@ The test requires Chromium or Edge. Windows defaults to the standard Edge instal
 ## Deployment and assessment
 
 Update `frontend/product.json` only after confirming the new contract's network, bytecode and ABI. Do not substitute placeholder addresses or remove truthful limitations. Operator-wallet testing proves technical activity, not independent users. Official social accounts, launch posts, independent users and continuous operation require separate evidence.
+
+## Legacy version
+
+[0x5BB15C0aCF487f37d3B6B93102095CA215652e37](https://scan.botchain.ai/address/0x5BB15C0aCF487f37d3B6B93102095CA215652e37) remains accessible through the local frontend's `?legacy=1` read-only view. Deployment of this version did not migrate legacy balances or records.
